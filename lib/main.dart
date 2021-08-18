@@ -190,22 +190,6 @@ class _InputForm extends State<InputForm> {
   @override
   Widget build(BuildContext context) {
     print('###build###');
-    DocumentReference doc =
-        FirebaseFirestore.instance.collection('kashikari-memo').doc();
-    // todo: thenは非同期
-    // doc.get().then((DocumentSnapshot d) {
-    //   if (d.exists) {
-    //     print('exist');
-    //     print(d['user']);
-    //     _formData.user = d['user'];
-    //     _formData.stuff = d['stuff'];
-    //   } else {
-    //     print('no exist');
-    //   }
-    // }).catchError((error) {
-    //   print(error);
-    // });
-
     return Scaffold(
         appBar: AppBar(
           title: Text('入力画面'),
@@ -215,14 +199,17 @@ class _InputForm extends State<InputForm> {
               onPressed: () {
                 print('saved');
                 if (_key.currentState!.validate()) {
+                  print('validate ok.');
                   _key.currentState!.save();
+                  print('save currentState.');
                   // todo データ名が冗長なのでdoc.set(_formData)のようにしたい。
                   // FireStore can set object with converter.
                   // https://firebase.google.cn/docs/firestore/manage-data/add-data?hl=ja
                   //
-                  print('widget id:${widget._doc}');
-                  // todo: すべて新規登録になっている。doc('id').にする.
-                  doc.set({
+                  FirebaseFirestore.instance
+                      .collection('kashikari-memo')
+                      .doc(widget._doc?.id)
+                      .set({
                     'borrowOrLend': _formData.borrowOrLend.toString(),
                     'user': _formData.user,
                     'stuff': _formData.stuff,
@@ -237,6 +224,11 @@ class _InputForm extends State<InputForm> {
               icon: Icon(Icons.delete),
               onPressed: () {
                 print('delete');
+                FirebaseFirestore.instance
+                    .collection('kashikari-memo')
+                    .doc(widget._doc?.id)
+                    .delete()
+                    .then((value) => Navigator.of(context).pop());
               },
             ),
           ],
