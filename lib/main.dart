@@ -93,6 +93,11 @@ class MyListState extends State<MyList> {
                   trailing: IconButton(
                     onPressed: () {
                       print('mode_edit icon onPressed.');
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                            settings: RouteSettings(name: '/edit'),
+                            builder: (context) => InputForm(document)),
+                      );
                     },
                     icon: Icon(Icons.mode_edit),
                   ),
@@ -106,7 +111,8 @@ class MyListState extends State<MyList> {
         onPressed: () {
           print('floatingActionButton');
           Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => InputForm(),
+            settings: RouteSettings(name: '/new'),
+            builder: (context) => InputForm(null),
           ));
         },
         child: Icon(Icons.add),
@@ -117,25 +123,30 @@ class MyListState extends State<MyList> {
 }
 
 class InputForm extends StatefulWidget {
+  final DocumentSnapshot? _doc; // nullable
+
+  InputForm(this._doc);
+
   @override
   State<StatefulWidget> createState() => _InputForm();
 }
+
+enum BorrowOrLend { borrow, lend }
 
 class _InputFormData {
   var borrowOrLend = BorrowOrLend.borrow;
   String user = ""; //todo
   String stuff = ""; // todo
   var date = DateTime.now();
+  var path = "";
 }
 
-enum BorrowOrLend { borrow, lend }
-
-bool f_check() {
-  final es = BorrowOrLend.borrow.toString();
-  final b = BorrowOrLend.values.firstWhere((e) => e.toString() == es);
-  assert(b == BorrowOrLend.borrow);
-  return b == BorrowOrLend.borrow;
-}
+// bool f_check() {
+//   final es = BorrowOrLend.borrow.toString();
+//   final b = BorrowOrLend.values.firstWhere((e) => e.toString() == es);
+//   assert(b == BorrowOrLend.borrow);
+//   return b == BorrowOrLend.borrow;
+// }
 
 class _InputForm extends State<InputForm> {
   final _formData = _InputFormData();
@@ -156,9 +167,44 @@ class _InputForm extends State<InputForm> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    print('###initState###');
+    if (widget._doc != null) {
+      print(widget._doc);
+      print(widget._doc!.exists);
+      print(widget._doc!['borrowOrLend']);
+      // todo: もっと良い書き方。 convert
+      _formData.borrowOrLend = BorrowOrLend.values
+          .firstWhere((e) => e.toString() == widget._doc!['borrowOrLend']);
+      _formData.stuff = widget._doc!['stuff'];
+      _formData.user = widget._doc!['user'];
+    }
+  }
+
+  Future<void> _sample(BuildContext context) async {
+    print('wait 5sec');
+    await Future.delayed(Duration(seconds: 5));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    print('###build###');
     DocumentReference doc =
         FirebaseFirestore.instance.collection('kashikari-memo').doc();
+    // todo: thenは非同期
+    // doc.get().then((DocumentSnapshot d) {
+    //   if (d.exists) {
+    //     print('exist');
+    //     print(d['user']);
+    //     _formData.user = d['user'];
+    //     _formData.stuff = d['stuff'];
+    //   } else {
+    //     print('no exist');
+    //   }
+    // }).catchError((error) {
+    //   print(error);
+    // });
 
     return Scaffold(
         appBar: AppBar(
@@ -174,13 +220,14 @@ class _InputForm extends State<InputForm> {
                   // FireStore can set object with converter.
                   // https://firebase.google.cn/docs/firestore/manage-data/add-data?hl=ja
                   //
+                  print('widget id:${widget._doc}');
+                  // todo: すべて新規登録になっている。doc('id').にする.
                   doc.set({
                     'borrowOrLend': _formData.borrowOrLend.toString(),
                     'user': _formData.user,
                     'stuff': _formData.stuff,
                     'date': Timestamp.fromDate(_formData.date),
-                  });
-                  Navigator.of(context).pop();
+                  }).then((value) => Navigator.of(context).pop());
                 } else {
                   print('invalidate!');
                 }
@@ -264,7 +311,8 @@ class _InputForm extends State<InputForm> {
   }
 
   _changeBorrowOrLend(value) {
-    print('called _changeBorrowOrLend:$value');
+    print('called _changeBorrowOrLend value=:$value');
+    print('  _formData.borrowOrLend=:${_formData.borrowOrLend}');
     setState(() {
       _formData.borrowOrLend = value;
     });
