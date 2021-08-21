@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -38,8 +39,12 @@ class _AppState extends State<App> {
 
         // Once complete, show your application
         if (snapshot.connectionState == ConnectionState.done) {
-          //return MyMaterialApp();
-          return MyListApp();
+          //return MyListApp();
+          return MaterialApp(
+            title: 'ほほほ',
+            //home: UserRegistrationPage(),
+            home: UserAuthPage(),
+          );
         }
 
         // Otherwise, show something whilst waiting for initialization to complete
@@ -49,6 +54,166 @@ class _AppState extends State<App> {
   }
 }
 
+class UserAuthPage extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => UserAuthPageState();
+}
+
+class UserAuthPageState extends State<UserAuthPage> {
+  final _formKey = GlobalKey<FormState>();
+  String email = '';
+  String password = '';
+  String message = '';
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('ユーザー認証')),
+      body: Form(
+        key: _formKey,
+        child: Container(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextFormField(
+                decoration: InputDecoration(labelText: 'メールアドレス'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'メールアドレスを入力してください。';
+                  }
+                },
+                onChanged: (value) {
+                  setState(() {
+                    email = value;
+                  });
+                },
+              ),
+              SizedBox(
+                height: 10.0,
+              ),
+              TextFormField(
+                obscureText: true,
+                decoration: InputDecoration(labelText: 'パスワード'),
+                onChanged: (value) {
+                  setState(() {
+                    password = value;
+                  });
+                },
+              ),
+              SizedBox(
+                height: 10.0,
+              ),
+              ElevatedButton(
+                  onPressed: () async {
+                    print('onPressed');
+                    try {
+                      final credential = await FirebaseAuth.instance
+                          .signInWithEmailAndPassword(
+                              email: email, password: password);
+                      setState(() {
+                        message = '登録成功.${credential.user!.displayName}';
+
+                        Navigator.of(context).push(MaterialPageRoute(
+                            settings: RouteSettings(name: '/list'),
+                            builder: (context) => MyList()));
+                      });
+                    } catch (e) {
+                      setState(() {
+                        message = '登録失敗:${e.toString()}';
+                      });
+                    }
+                  },
+                  child: Text('ログイン')),
+              SizedBox(
+                height: 10.0,
+              ),
+              Text(message),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class UserRegistrationPage extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => UserRegistrationPageState();
+}
+
+class UserRegistrationPageState extends State<UserRegistrationPage> {
+  final _formKey = GlobalKey<FormState>();
+  String email = '';
+  String password = '';
+  String message = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('ユーザー登録')),
+      body: Form(
+        key: _formKey,
+        child: Container(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextFormField(
+                decoration: InputDecoration(labelText: 'メールアドレス'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'メールアドレスを入力してください。';
+                  }
+                },
+                onChanged: (value) {
+                  setState(() {
+                    email = value;
+                  });
+                },
+              ),
+              SizedBox(
+                height: 10.0,
+              ),
+              TextFormField(
+                obscureText: true,
+                decoration: InputDecoration(labelText: 'パスワード'),
+                onChanged: (value) {
+                  setState(() {
+                    password = value;
+                  });
+                },
+              ),
+              SizedBox(
+                height: 10.0,
+              ),
+              ElevatedButton(
+                  onPressed: () async {
+                    print('onPressed');
+                    try {
+                      final credential = await FirebaseAuth.instance
+                          .createUserWithEmailAndPassword(
+                              email: email, password: password);
+                      setState(() {
+                        message = '登録成功.${credential.user!.displayName}';
+                      });
+                    } catch (e) {
+                      setState(() {
+                        message = '登録失敗:${e.toString()}';
+                      });
+                    }
+                  },
+                  child: Text('ユーザー登録')),
+              SizedBox(
+                height: 10.0,
+              ),
+              Text(message),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// TODO ここが起点。
 class MyListApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -85,10 +250,9 @@ class MyListState extends State<MyList> {
                 var d = data['date'] as Timestamp;
                 return ListTile(
                   leading: Icon(Icons.android),
-                  title: Text(
-                      '貸し借り:${data['borrowOrLend']} スタッフ:${data['stuff']}'),
+                  title: Text('${data['borrowOrLend']} 誰が:${data['stuff']}'),
                   subtitle: Text('date:${d.toDate()}\n'
-                      'user:${data['user']}'),
+                      '誰に:${data['user']}'),
                   //trailing: Icon(Icons.mode_edit),
                   trailing: IconButton(
                     onPressed: () {
@@ -141,13 +305,6 @@ class _InputFormData {
   var path = "";
 }
 
-// bool f_check() {
-//   final es = BorrowOrLend.borrow.toString();
-//   final b = BorrowOrLend.values.firstWhere((e) => e.toString() == es);
-//   assert(b == BorrowOrLend.borrow);
-//   return b == BorrowOrLend.borrow;
-// }
-
 class _InputForm extends State<InputForm> {
   final _formData = _InputFormData();
   final _key = GlobalKey<FormState>();
@@ -180,11 +337,6 @@ class _InputForm extends State<InputForm> {
       _formData.stuff = widget._doc!['stuff'];
       _formData.user = widget._doc!['user'];
     }
-  }
-
-  Future<void> _sample(BuildContext context) async {
-    print('wait 5sec');
-    await Future.delayed(Duration(seconds: 5));
   }
 
   @override
@@ -308,159 +460,5 @@ class _InputForm extends State<InputForm> {
     setState(() {
       _formData.borrowOrLend = value;
     });
-  }
-}
-
-class MyMaterialApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'hello',
-      home: MySandbox(),
-    );
-  }
-}
-
-class MySandbox extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(title: Text('material app')),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('とりあえず、ボタン遷移でサンプルを作っていく。'),
-              ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (BuildContext c) {
-                      return AddUserWidget('axb', 'xxx', 15);
-                    }));
-                  },
-                  child: Text('firestoneユーザー登録')),
-              ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (BuildContext c) {
-                      return LendWidget();
-                    }));
-                  },
-                  child: Text('貸し借りアプリ')),
-              Divider(
-                height: 1.0,
-                color: Colors.red,
-              ),
-              ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (BuildContext c) {
-                      return Scaffold(
-                          appBar: AppBar(
-                            title: const Text('ユーザ一覧表示'),
-                          ),
-                          body: UserList());
-                    }));
-                  },
-                  child: Text('firestone UserList')),
-              ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (BuildContext c) {
-                      return MySample();
-                    }));
-                  },
-                  child: const Text('サンプル遷移'))
-            ],
-          ),
-        ));
-  }
-}
-
-class UserList extends StatefulWidget {
-  @override
-  State<StatefulWidget> createState() => _UserListState();
-}
-
-class _UserListState extends State<UserList> {
-  final _usersStream =
-      FirebaseFirestore.instance.collection('users').snapshots();
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: _usersStream,
-      builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-        if (snapshot.hasError) return Text('FireStore error!');
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return CircularProgressIndicator();
-        }
-        return ListView(
-          children: snapshot.data!.docs.map((DocumentSnapshot document) {
-            //var l = snapshot.data!.docs.length;
-            var data = document.data()! as Map<String, dynamic>;
-            return ListTile(
-              title: Text(data['full_name']),
-              subtitle: Text(data['full_name']),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-}
-
-class LendWidget extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('貸し借りアプリ'),
-      ),
-    );
-  }
-}
-
-class MySample extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('画面遷移サンプル'),
-      ),
-      body: Column(
-        children: [
-          Text('これで単純なNavigatorが使えた!'),
-          ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('戻るボタン'))
-        ],
-      ),
-    );
-  }
-}
-
-class AddUserWidget extends StatelessWidget {
-  final String _fullName;
-  final String company;
-  final int age;
-
-  AddUserWidget(this._fullName, this.company, this.age);
-
-  @override
-  Widget build(BuildContext context) {
-    CollectionReference users = FirebaseFirestore.instance.collection('users');
-    Future<void> addUser() {
-      return users
-          .add({'full_name': _fullName, 'company': company, 'age': age});
-    }
-
-    return TextButton(
-        onPressed: () {
-          addUser();
-          Navigator.of(context).pop();
-        },
-        child: Text('FireStoneにユーザー登録'));
   }
 }
