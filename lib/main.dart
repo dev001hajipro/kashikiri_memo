@@ -33,7 +33,6 @@ class _AppState extends State<App> {
       builder: (context, snapshot) {
         // Check for errors
         if (snapshot.hasError) {
-          print(snapshot.error.toString());
           return Container(color: Colors.red);
         }
 
@@ -115,7 +114,6 @@ class UserAuthPageState extends State<UserAuthPage> {
               ),
               ElevatedButton(
                   onPressed: () async {
-                    print('onPressed');
                     try {
                       final credential = await FirebaseAuth.instance
                           .signInWithEmailAndPassword(
@@ -197,7 +195,6 @@ class UserRegistrationPageState extends State<UserRegistrationPage> {
               ),
               ElevatedButton(
                   onPressed: () async {
-                    print('onPressed');
                     try {
                       final credential = await FirebaseAuth.instance
                           .createUserWithEmailAndPassword(
@@ -290,14 +287,20 @@ enum BorrowOrLend { borrow, lend }
 
 class _InputFormData extends ChangeNotifier {
   String id = '';
-  var borrowOrLend = BorrowOrLend.borrow;
+  var _borrowOrLend = BorrowOrLend.borrow;
+  BorrowOrLend get borrowOrLend => _borrowOrLend;
+  set borrowOrLend(BorrowOrLend v) {
+    _borrowOrLend = v;
+    notifyListeners();
+  }
+
   String user = ''; //todo
   String stuff = ''; // todo
   var date = DateTime.now();
   var path = '';
   void reset() {
     id = '';
-    borrowOrLend = BorrowOrLend.borrow;
+    _borrowOrLend = BorrowOrLend.borrow;
     user = '';
     stuff = '';
     date = DateTime.now();
@@ -315,7 +318,7 @@ class _InputForm extends State<InputForm> {
 
   @override
   Widget build(BuildContext context) {
-    print('###build###');
+    var groupValue = context.watch<_InputFormData>().borrowOrLend;
     return Scaffold(
         appBar: AppBar(
           title: Text('入力画面'),
@@ -323,17 +326,13 @@ class _InputForm extends State<InputForm> {
             IconButton(
               icon: Icon(Icons.save),
               onPressed: () {
-                print('saved');
                 if (_key.currentState!.validate()) {
-                  print('validate ok.');
                   _key.currentState!.save();
-                  print('save currentState.');
                   // todo データ名が冗長なのでdoc.set(_formData)のようにしたい。
                   // FireStore can set object with converter.
                   // https://firebase.google.cn/docs/firestore/manage-data/add-data?hl=ja
                   //
                   var m = context.read<_InputFormData>();
-                  print('#################### m.id=${m.id}');
                   FirebaseFirestore.instance
                       .collection('kashikari-memo')
                       .doc(m.id.isEmpty ? null : m.id)
@@ -343,15 +342,13 @@ class _InputForm extends State<InputForm> {
                     'stuff': m.stuff,
                     'date': Timestamp.fromDate(m.date),
                   }).then((value) => Navigator.of(context).pop());
-                } else {
-                  print('invalidate!');
                 }
+                // todo not validate.
               },
             ),
             IconButton(
               icon: Icon(Icons.delete),
               onPressed: () {
-                print('delete');
                 FirebaseFirestore.instance
                     .collection('kashikari-memo')
                     .doc(context.read<_InputFormData>().id)
@@ -371,26 +368,18 @@ class _InputForm extends State<InputForm> {
                 RadioListTile(
                     title: Text('借り'),
                     value: BorrowOrLend.borrow,
-                    groupValue: context.read<_InputFormData>().borrowOrLend,
+                    groupValue: groupValue,
                     onChanged: (value) {
-                      print('called _changeBorrowOrLend value=:$value');
-                      print(
-                          '  _formData.borrowOrLend=:${context.read<_InputFormData>().borrowOrLend}');
-                      context.read<_InputFormData>().borrowOrLend = BorrowOrLend
-                          .values
-                          .firstWhere((e) => e.toString() == value);
+                      context.read<_InputFormData>().borrowOrLend =
+                          BorrowOrLend.values.firstWhere((e) => e == value);
                     }),
                 RadioListTile(
                     title: Text('貸し'),
                     value: BorrowOrLend.lend,
-                    groupValue: context.read<_InputFormData>().borrowOrLend,
+                    groupValue: groupValue,
                     onChanged: (value) {
-                      print('called _changeBorrowOrLend value=:$value');
-                      print(
-                          '  _formData.borrowOrLend=:${context.read<_InputFormData>().borrowOrLend}');
-                      context.read<_InputFormData>().borrowOrLend = BorrowOrLend
-                          .values
-                          .firstWhere((e) => e.toString() == value);
+                      context.read<_InputFormData>().borrowOrLend =
+                          BorrowOrLend.values.firstWhere((e) => e == value);
                     }),
                 TextFormField(
                   decoration: InputDecoration(
@@ -399,16 +388,11 @@ class _InputForm extends State<InputForm> {
                       labelText: '名前'),
                   validator: (str) {
                     if (str == null || str.isEmpty) {
-                      print('show error message!');
-                      print('str is null or empty');
                       return 'required';
                     }
-                    print('validator user: arg=$str');
                   },
                   onSaved: (s) {
                     context.read<_InputFormData>().user = s ?? '';
-                    print(
-                        'saved(user): ${context.read<_InputFormData>().user}');
                   },
                   initialValue: context.read<_InputFormData>().user,
                 ),
@@ -419,23 +403,17 @@ class _InputForm extends State<InputForm> {
                       labelText: 'ローン'),
                   validator: (str) {
                     if (str == null || str.isEmpty) {
-                      print('show error message!');
-                      print('str is null or empty');
                       return 'required';
                     }
-                    print('validator user: loan=$str');
                   },
                   onSaved: (s) {
                     context.read<_InputFormData>().stuff = s ?? '';
-                    print(
-                        'saved(stuff): ${context.read<_InputFormData>().stuff}');
                   },
                   initialValue: context.read<_InputFormData>().stuff,
                 ),
                 Text('締切日 ${context.read<_InputFormData>().date}'),
                 ElevatedButton(
                   onPressed: () {
-                    print('call date picker.');
                     _selectDate(context);
                   },
                   child: Text('締切日変更'),
@@ -453,7 +431,6 @@ class _InputForm extends State<InputForm> {
         firstDate: DateTime(2015),
         lastDate: DateTime(2023));
     if (pickedDate != null) {
-      print('_selectDate:${context.read<_InputFormData>().date}');
       context.read<_InputFormData>().date = pickedDate;
     }
   }
